@@ -1,0 +1,148 @@
+importer solidity-slice-1
+solc 0.8.34+commit.80d5c536
+solcSha256 0a2829292697dda542e4e365bb63fbd6d3ed51537140222a880ab760cffa7746
+digest 3076191025e718cf6bce2d38ea0f334b9405cc3af7dc87ec8612d5784cbe51e3
+contract Midnight
+root updatePositionView
+settings {"evmVersion":"osaka","metadata":{"bytecodeHash":"none"},"optimizer":{"enabled":true,"runs":466},"outputSelection":{"*":{"":["ast"],"*":["storageLayout"]}},"remappings":[],"viaIR":true}
+include Midnight.updatePositionView decl 3422 params [struct Market, bytes32, address]
+include UtilsLib.mulDivDown decl 5955 params [uint256, uint256, uint256]
+include UtilsLib.mulDivUp decl 5980 params [uint256, uint256, uint256]
+include UtilsLib.min decl 5924 params [uint256, uint256]
+exclude Midnight. decl 108
+exclude Midnight.multicall decl 148
+exclude Midnight.setConfigurator decl 174
+exclude Midnight.setFeeSetter decl 199
+exclude Midnight.setFeeClaimer decl 224
+exclude Midnight.setTickSpacingSetter decl 249
+exclude Midnight.enableLltv decl 285
+exclude Midnight.enableLiquidationCursor decl 321
+exclude Midnight.setMarketTickSpacing decl 384
+exclude Midnight.setMarketSettlementFee decl 534
+exclude Midnight.setDefaultSettlementFee decl 602
+exclude Midnight.setMarketContinuousFee decl 659
+exclude Midnight.setDefaultContinuousFee decl 700
+exclude Midnight.claimSettlementFee decl 743
+exclude Midnight.claimContinuousFee decl 822
+exclude Midnight.take decl 1659
+exclude Midnight.withdraw decl 1792
+exclude Midnight.repay decl 1913
+exclude Midnight.supplyCollateral decl 2054
+exclude Midnight.withdrawCollateral decl 2178
+exclude Midnight.liquidate decl 2785
+exclude Midnight.setConsumed decl 2842
+exclude Midnight.setIsAuthorized decl 2887
+exclude Midnight.flashLoan decl 2992
+exclude Midnight.touchMarket decl 3279
+exclude Midnight.updatePosition decl 3450
+exclude Midnight._updatePosition decl 3559
+exclude Midnight.isHealthy decl 3656
+exclude Midnight.settlementFee decl 3807
+exclude Midnight.hasCredit decl 3826
+exclude Midnight.toMarket decl 3868
+exclude Midnight.credit decl 3886
+exclude Midnight.pendingFee decl 3903
+exclude Midnight.lastLossFactor decl 3920
+exclude Midnight.lastAccrual decl 3937
+exclude Midnight.debt decl 3954
+exclude Midnight.collateralBitmap decl 3971
+exclude Midnight.collateral decl 3992
+exclude Midnight.totalUnits decl 4005
+exclude Midnight.lossFactor decl 4018
+exclude Midnight.withdrawable decl 4031
+exclude Midnight.continuousFeeCredit decl 4044
+exclude Midnight.settlementFeeCbps decl 4085
+exclude Midnight.continuousFee decl 4099
+exclude Midnight.tickSpacing decl 4112
+exclude Midnight.liquidationLocked decl 4129
+exclude IBuyCallback.onBuy decl 4154
+exclude ISellCallback.onSell decl 4177
+exclude ILiquidateCallback.onLiquidate decl 4204
+exclude IRepayCallback.onRepay decl 4221
+exclude IFlashLoanCallback.onFlashLoan decl 4237
+exclude IERC20.transfer decl 4249
+exclude IERC20.transferFrom decl 4260
+exclude IEnterGate.canIncreaseCredit decl 4270
+exclude IEnterGate.canIncreaseDebt decl 4277
+exclude ILiquidatorGate.canLiquidate decl 4285
+exclude IMidnight.position decl 4522
+exclude IMidnight.marketState decl 4553
+exclude IMidnight.consumed decl 4562
+exclude IMidnight.isAuthorized decl 4571
+exclude IMidnight.defaultSettlementFeeCbp decl 4580
+exclude IMidnight.defaultContinuousFee decl 4587
+exclude IMidnight.claimableSettlementFee decl 4594
+exclude IMidnight.isLltvEnabled decl 4601
+exclude IMidnight.isLiquidationCursorEnabled decl 4608
+exclude IMidnight.configurator decl 4613
+exclude IMidnight.feeSetter decl 4618
+exclude IMidnight.feeClaimer decl 4623
+exclude IMidnight.tickSpacingSetter decl 4628
+exclude IMidnight.multicall decl 4635
+exclude IMidnight.setConfigurator decl 4641
+exclude IMidnight.setFeeSetter decl 4646
+exclude IMidnight.setFeeClaimer decl 4651
+exclude IMidnight.setTickSpacingSetter decl 4656
+exclude IMidnight.enableLltv decl 4661
+exclude IMidnight.enableLiquidationCursor decl 4666
+exclude IMidnight.setMarketTickSpacing decl 4673
+exclude IMidnight.setMarketSettlementFee decl 4682
+exclude IMidnight.setDefaultSettlementFee decl 4691
+exclude IMidnight.setMarketContinuousFee decl 4698
+exclude IMidnight.setDefaultContinuousFee decl 4705
+exclude IMidnight.claimSettlementFee decl 4714
+exclude IMidnight.claimContinuousFee decl 4724
+exclude IMidnight.take decl 4747
+exclude IMidnight.withdraw decl 4759
+exclude IMidnight.repay decl 4773
+exclude IMidnight.supplyCollateral decl 4785
+exclude IMidnight.withdrawCollateral decl 4799
+exclude IMidnight.liquidate decl 4825
+exclude IMidnight.setConsumed decl 4834
+exclude IMidnight.setIsAuthorized decl 4843
+exclude IMidnight.flashLoan decl 4856
+exclude IMidnight.touchMarket decl 4864
+exclude IMidnight.updatePositionView decl 4881
+exclude IMidnight.updatePosition decl 4895
+exclude IMidnight.lastLossFactor decl 4905
+exclude IMidnight.collateralBitmap decl 4914
+exclude IMidnight.collateral decl 4925
+exclude IMidnight.toMarket decl 4933
+exclude IMidnight.credit decl 4942
+exclude IMidnight.debt decl 4951
+exclude IMidnight.totalUnits decl 4958
+exclude IMidnight.lossFactor decl 4965
+exclude IMidnight.tickSpacing decl 4972
+exclude IMidnight.withdrawable decl 4979
+exclude IMidnight.settlementFeeCbps decl 4988
+exclude IMidnight.continuousFee decl 4995
+exclude IMidnight.continuousFeeCredit decl 5002
+exclude IMidnight.pendingFee decl 5011
+exclude IMidnight.lastAccrual decl 5020
+exclude IMidnight.liquidationLocked decl 5029
+exclude IMidnight.isHealthy decl 5041
+exclude IMidnight.settlementFee decl 5050
+exclude IOracle.price decl 5058
+exclude IRatifier.isRatified decl 5075
+exclude <free>.maxSettlementFee decl 5169
+exclude <free>.maxLif decl 5196
+exclude IdLib.toId decl 5496
+exclude IdLib.storeInCode decl 5529
+exclude SafeTransferLib.safeTransfer decl 5598
+exclude SafeTransferLib.safeTransferFrom decl 5659
+exclude TickLib.divHalfDownUnchecked decl 5702
+exclude TickLib.wExp decl 5791
+exclude TickLib.tickToPrice decl 5838
+exclude TickLib.priceToTick decl 5907
+exclude UtilsLib.zeroFloorSub decl 5935
+exclude UtilsLib.toUint128 decl 6005
+exclude UtilsLib.countBits decl 6060
+exclude UtilsLib.msb decl 6070
+exclude UtilsLib.setBit decl 6091
+exclude UtilsLib.clearBit decl 6113
+exclude UtilsLib.tExchange decl 6143
+exclude UtilsLib.tGet decl 6171
+projection market.maturity head 4 as market_maturity ignored [chainId, midnight, loanToken, collateralParams, rcfThreshold, enterGate, liquidatorGate]
+storage position
+storage marketState
+opaque position.collateral t_array(t_uint128)128_storage word 3 byte 0
