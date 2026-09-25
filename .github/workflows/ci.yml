@@ -13,12 +13,11 @@ jobs:
         with:
           build: false
       - uses: foundry-rs/foundry-toolchain@v1
-      - name: install pinned solc 0.8.34
-        run: |
-          mkdir -p .lake/solidity-import
-          curl -fsSL -A verity-official-solc/0.8.34 \
-            -o .lake/solidity-import/solc-0.8.34 \
-            https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.34+commit.80d5c536
-          echo "d40adc6f9fdbb22a97d32a02fa05688bf2ee7886affc48c9851b0afd4a726b39  .lake/solidity-import/solc-0.8.34" | sha256sum -c
-          chmod +x .lake/solidity-import/solc-0.8.34
-      - run: ./scripts/check.sh
+        with:
+          version: v1.5.0
+      - run: ./check/check.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: midnight-validation
+          path: out/
