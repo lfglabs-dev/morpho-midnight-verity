@@ -18,3 +18,4 @@ lake build Midnight.Import Midnight.Spec
 python3 -m venv .lake/lean-mcp
 .lake/lean-mcp/bin/python -m pip install --disable-pip-version-check -r scripts/lean-mcp-requirements.txt
 .lake/lean-mcp/bin/lean-lsp-mcp --version
+sh scripts/doctor.sh

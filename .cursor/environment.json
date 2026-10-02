@@ -3,6 +3,7 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
-  "install": "sh scripts/setup.sh",
-  "user": "ubuntu"
+  "install": "sh scripts/setup.sh && sh scripts/doctor.sh --require-image",
+  "user": "ubuntu",
+  "start": "sh scripts/doctor.sh --require-image"
 }
