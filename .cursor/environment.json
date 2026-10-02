@@ -1,4 +1,8 @@
 {
-  "build": { "dockerfile": "Dockerfile", "context": ".." },
-  "install": "sh scripts/setup.sh"
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "sh scripts/setup.sh",
+  "user": "ubuntu"
 }
