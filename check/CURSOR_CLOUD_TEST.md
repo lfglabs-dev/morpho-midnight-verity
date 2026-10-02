@@ -89,15 +89,13 @@ be tested but cannot be promoted to active. It logged `Warming skipped (draft)`.
 The active Build for the current environment therefore remains the initial
 default-image Build `bld-20261002-a309b12f-e20a-4989-8968-d2781a34df2f`.
 
-No supported MCP or UI approval can promote this feature-ref draft directly.
-Without editing `master` in place, activation requires merging the environment
-commit, then allowing or triggering a Build with the repository default ref.
-That successful default-ref Build becomes active and is the Build from which a
-fresh proof agent should be launched.
-
-`propose-environment-json` was not used: its supported proposal fields are only
-`install` and `start`, so it cannot preserve this environment's Dockerfile
-base. The repository configuration and Dockerfile remain the source of truth.
+No supported MCP or UI approval can promote a feature-ref draft directly.
+Activation without modifying `master` requires a second, no-ref Build: use the
+verified Docker Build snapshot as its base and have its install command fetch
+the exact result-branch commit before running setup. A successful no-ref Build
+is promotable and can be passed to `propose-environment-json`; Portal Save then
+reuses the validated snapshot. The repository configuration and Dockerfile
+remain the source of truth for the base snapshot.
 
 ## Lean MCP environment update
 
@@ -160,6 +158,22 @@ registration.
 This Build is fresh-run ready when selected explicitly by Build ID. It remains
 a non-promotable feature-ref draft; the default-ref activation requirement in
 the preceding section is unchanged.
+
+## Doctor, startup, and real MCP smoke update
+
+Input commit `ae85cc1` was integrated as `ae75778` while retaining all explicit
+image, Verity, and solc assertions. It adds:
+
+- `scripts/doctor.sh`, including `--require-image`;
+- install-time and per-boot doctor checks;
+- a real stdio MCP smoke test that requires zero errors for
+  `Midnight/Spec.lean`, detects an intentionally broken temporary proof, and
+  checks its exact Lean goal; and
+- environment `start` readiness validation.
+
+Static shell, Python, JSON, and current Cursor environment-schema checks passed.
+The final native Build, startup, smoke, and activation evidence follow after the
+promotable Build completes.
 
 References:
 
