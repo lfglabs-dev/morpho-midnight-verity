@@ -4,6 +4,10 @@ This branch keeps the deterministic Solidity import and the Certora specificatio
 `Midnight.Spec.updatePositionViewProperties`, but removes the existing proof and
 its supporting lemmas. The task is to generate a new kernel-checked proof.
 
+Use the short [Cursor proof prompt](.cursor/proof-prompt.md) when submitting
+this task. Select GPT-5.6 and the validated Build in the launch configuration;
+the prompt delegates proof constraints to `AGENTS.md`.
+
 The toolchain is Lean **4.31.0**, Verity
 **9b472a8a48a9990337845f1720a20f374fa1e9cd**, and checksum-pinned solc **0.8.34**.
 Lake dependencies and the Midnight Solidity submodule are pinned in git.
