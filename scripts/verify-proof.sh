@@ -3,6 +3,8 @@ set -eu
 cd "$(dirname "$0")/.."
 test -f Midnight/Proof.lean
 mkdir -p out
+# Build any newly generated supporting lemma modules.
+lake build
 # Elaborate the submitted theorem, even if the library root does not import it.
 lake env lean -o .lake/build/lib/lean/Midnight/Proof.olean Midnight/Proof.lean
 lake env lean check/AxiomAudit.lean > out/axioms.txt
