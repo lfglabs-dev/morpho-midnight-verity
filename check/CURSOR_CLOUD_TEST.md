@@ -126,8 +126,40 @@ The native Build verifies that the pinned server installs and starts far enough
 to print its version. A real `lean_diagnostic_messages` call still requires that
 account/team MCP registration and a fresh Cloud run.
 
-The final native Build evidence for this combined configuration follows after
-the branch-ref Build completes.
+### Final combined native Build
+
+- Tested commit: `d078a0279b2edc6e5b92c68a4a4c6976268d10f5`
+- Draft Build: `bld-20261002-b33eda78-ee99-4b41-bdb5-a576e6be2ac6`
+- Build environment version: `2022036`
+- Created/completed: `2026-10-02T14:17:07.720Z` /
+  `2026-10-02T14:25:08.399Z`
+- Status: **SUCCEEDED**
+
+The complete native log records:
+
+- Docker installation of `python3-venv` and `ripgrep`, Lean `4.31.0`, and the
+  `/etc/morpho-proof-environment` marker.
+- Verity revision `9b472a8a48a9990337845f1720a20f374fa1e9cd` and solc
+  `Version: 0.8.34+commit.80d5c536.Linux.g++`.
+- The reduced `Mathlib.Tactic` cache request (2,950 files rather than the
+  previous 8,542-file full cache).
+- Successful compilation of `Midnight.Import` and `Midnight.Spec` (38 jobs).
+- Successful installation of all 43 version-pinned Python requirements and
+  `lean-lsp-mcp 0.31.0`.
+- Install exit code 0, snapshot ready, and terminal Build status `SUCCEEDED`.
+
+A fresh Cloud validation run
+`bc-c76c1fb7-b42c-50f6-bfa1-a471a6cdddca` cold-booted from this exact Build and
+commit. It confirmed user `ubuntu`, the image marker, Lean/Lake/Python/ripgrep,
+the exact Verity and solc pins, existing Import/Spec artifacts, a successful
+38-job rebuild, and version `0.31.0` through both the binary and
+`scripts/lean-mcp.sh`. Its working tree remained clean. It also independently
+confirmed that no Lean/LSP MCP namespace is exposed without account/team MCP
+registration.
+
+This Build is fresh-run ready when selected explicitly by Build ID. It remains
+a non-promotable feature-ref draft; the default-ref activation requirement in
+the preceding section is unchanged.
 
 References:
 
