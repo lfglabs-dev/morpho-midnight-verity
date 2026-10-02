@@ -28,3 +28,26 @@ The verifier checks the theorem's axioms and rejects `sorryAx` and additional
 axioms. `./check/check.sh` additionally checks import provenance and differential
 execution after the proof is generated. See [check/README.md](check/README.md)
 for the import's trust boundary.
+
+## Agent diagnostics
+
+`sh scripts/doctor.sh` checks the installed toolchain, pinned dependency, solc,
+compiled import/specification, and MCP executable. Cursor install and startup
+also require the Docker image marker so a default image cannot pass readiness.
+
+`lean-lsp-mcp` 0.31.0 and its Python dependencies are pinned and preinstalled by
+the install hook. `sh scripts/lean-mcp.sh` launches its stdio server; it provides
+compiler diagnostics, goal states, hover information, and local theorem search.
+`.cursor/mcp.json` configures Cursor IDE. Cursor Cloud custom MCP servers must be
+enabled in the account/team MCP settings; the repo config alone does not enable
+them. Configure the same stdio wrapper using the actual Cloud workspace path.
+Shell-based compilation and verification work without enabling the MCP.
+
+To exercise real diagnostics and proof goals:
+
+```sh
+.lake/lean-mcp/bin/python scripts/check-lean-mcp.py
+```
+
+The smoke test checks the unchanged Morpho specification, detects an intentionally
+unfinished temporary example, and reads its goal. The temporary file is removed.
