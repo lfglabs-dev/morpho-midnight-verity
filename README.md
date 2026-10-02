@@ -22,10 +22,12 @@ The install hook prepares checksum-pinned solc 0.8.34, the committed Lake
 dependencies, the imported model/specification, and lean-lsp-mcp 0.31.0.
 Install and startup readiness checks reject Cursor's fallback/default image.
 
-Cursor only activates Builds from the default branch; feature-branch draft
-Builds can be tested but cannot be promoted. Keep this infrastructure on the
-default branch and launch proof experiments on `cursor/proof-sandbox`.
-That branch removes the old proof; this infrastructure change preserves it.
+Feature-branch draft Builds can be tested but cannot be promoted directly.
+A supported saved-snapshot route has now passed a no-ref Build and fresh
+startup validation; activation requires Save in the Cursor Environment panel.
+This infrastructure PR is optional for durable default-branch configuration.
+Proof experiments use `cursor/proof-sandbox`, which removes the old proofs;
+this infrastructure branch preserves them.
 See `check/CURSOR_CLOUD_TEST.md` for native Build evidence and activation status.
 
 `sh scripts/doctor.sh` checks local readiness. `sh scripts/lean-mcp.sh` runs
