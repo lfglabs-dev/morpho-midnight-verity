@@ -1,7 +1,7 @@
 FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates curl git python3 build-essential unzip zstd sudo \
+    ca-certificates curl git python3 python3-venv build-essential unzip zstd sudo ripgrep \
     && rm -rf /var/lib/apt/lists/*
 RUN id -u ubuntu >/dev/null 2>&1 || useradd -m -s /bin/bash ubuntu
 RUN echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu
