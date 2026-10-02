@@ -89,15 +89,13 @@ be tested but cannot be promoted to active. It logged `Warming skipped (draft)`.
 The active Build for the current environment therefore remains the initial
 default-image Build `bld-20261002-a309b12f-e20a-4989-8968-d2781a34df2f`.
 
-No supported MCP or UI approval can promote this feature-ref draft directly.
-Without editing `master` in place, activation requires merging the environment
-commit, then allowing or triggering a Build with the repository default ref.
-That successful default-ref Build becomes active and is the Build from which a
-fresh proof agent should be launched.
-
-`propose-environment-json` was not used: its supported proposal fields are only
-`install` and `start`, so it cannot preserve this environment's Dockerfile
-base. The repository configuration and Dockerfile remain the source of truth.
+No supported MCP or UI approval can promote a feature-ref draft directly.
+Activation without modifying `master` requires a second, no-ref Build: use the
+verified Docker Build snapshot as its base and have its install command fetch
+the exact result-branch commit before running setup. A successful no-ref Build
+is promotable and can be passed to `propose-environment-json`; Portal Save then
+reuses the validated snapshot. The repository configuration and Dockerfile
+remain the source of truth for the base snapshot.
 
 ## Lean MCP environment update
 
@@ -161,27 +159,82 @@ This Build is fresh-run ready when selected explicitly by Build ID. It remains
 a non-promotable feature-ref draft; the default-ref activation requirement in
 the preceding section is unchanged.
 
+## Doctor, startup, and real MCP smoke update
+
+Input commit `ae85cc1` was integrated as `ae75778` while retaining all explicit
+image, Verity, and solc assertions. It adds:
+
+- `scripts/doctor.sh`, including `--require-image`;
+- install-time and per-boot doctor checks;
+- a real stdio MCP smoke test that requires zero errors for
+  `Midnight/Spec.lean`, detects an intentionally broken temporary proof, and
+  checks its exact Lean goal; and
+- environment `start` readiness validation.
+
+Static shell, Python, JSON, and current Cursor environment-schema checks passed.
+
+### Promotable native Build and startup
+
+The first no-ref activation candidate
+`bld-20261002-bc194a73-da7b-466c-97d9-e862f7819c81` succeeded as environment
+version `2022270`. Its native logs contain the complete doctor and real MCP
+smoke output, and an exact-Build fresh run proved the automatic startup doctor
+exited 0. Portal correctly refused to reuse it because its base snapshot came
+from a separate Build context rather than this run's snapshot API.
+
+The supported snapshot flow then completed:
+
+- Local setup passed twice, including doctor and real MCP smoke.
+- Snapshot `snapshot-20261002-e1087db7-943d-4359-a1bf-2d72d34c2693`
+  reached `ready`.
+- Final no-ref Build:
+  `bld-20261002-91c2b8c1-a253-43db-a9d1-0b096a5ec6d1`
+- Build environment version: `2022506`
+- Created/completed: `2026-10-02T14:41:06.964Z` /
+  `2026-10-02T14:45:03.871Z`
+- Status: **SUCCEEDED**
+
+The final native log proves checkout of exact commit
+`a6e376e1fdaa06dfcd09b198b91b9c0cd924abaa`, all pinned tool checks,
+`Midnight.Import`/`Midnight.Spec` compilation, doctor readiness, zero Spec
+diagnostics, the intentional `unsolved goals` diagnostic, exact goal
+`n + 0 = n`, install exit 0, and a ready snapshot.
+
+Fresh run `bc-4239dce6-60c6-5cf1-b699-ddba174538d1` cold-booted from this exact
+Build. Before manual commands, `/tmp/cursor/start-user/start-user.log` contained
+`Morpho proof environment is ready.` and `start-user.status` contained `0`.
+Manual doctor and MCP smoke also exited 0. The smoke emits a non-fatal Python
+`BaseSubprocessTransport.__del__` warning after producing valid results.
+
+`propose-environment-json` accepted this Build and the tested install/start
+scripts. Activation now requires only **Save** in Cursor's Environment panel;
+until Save, the environment still resolves to the original active Build.
+
 References:
 
 - https://cursor.com/docs/cloud-agent/builds
 - https://cursor.com/docs/cloud-agent/capabilities
 
-## Input-branch readiness and local diagnostics
+## Existing proof run and transport recovery
 
-The proof-free input branch additionally has `scripts/doctor.sh` and install/start
-checks requiring the Docker image marker. Its JSON config validates against
-Cursor's published schema. Local setup, doctor, and the MCP smoke test pass.
-The MCP test checks Spec.lean (zero errors), detects a temporary unsolved
-`n + 0 = n` goal, and reads that goal through MCP.
+The environment conversation launched this proof run before the control-plane
+transport interruption. Preserve it; do not launch a duplicate:
 
-Infrastructure-only activation PR (preserves the existing proofs on master):
-https://github.com/lfglabs-dev/morpho-midnight-verity/pull/2
+- Proof run: https://cursor.com/agents/bc-0a652130-5c98-50ca-b2c7-928e3ca00765
+- Requested model: `gpt-5.6-sol-high` (actual model verification pending).
+- Selected Build: `bld-20261002-91c2b8c1-a253-43db-a9d1-0b096a5ec6d1`.
+- Proof-free input: `cursor/proof-sandbox@6ea1c1d`.
+- Last reported state: running; no full theorem success is claimed.
 
-Fresh native environment validation:
-https://cursor.com/agents/bc-c76c1fb7-b42c-50f6-bfa1-a471a6cdddca
-
-Environment-debugging run:
+Existing environment conversation:
 https://cursor.com/agents/bc-b9f1d937-5f57-4610-9f29-b3ad5b47358b
 
-A generated Morpho property proof and a general default-ref activation are not
-claimed by these environment tests.
+Final cold-boot/startup/MCP validation:
+https://cursor.com/agents/bc-4239dce6-60c6-5cf1-b699-ddba174538d1
+
+Environment Save (if still pending):
+https://cursor.com/dashboard/cloud-agents/environments/e/9e913d70-be66-11f1-bb68-864e54d14197
+
+PR #2 remains draft and unmerged. The validated saved-snapshot route does not
+require merging it; it is optional default-branch infrastructure. The earlier
+merge-approval question is superseded by this supported snapshot route.
