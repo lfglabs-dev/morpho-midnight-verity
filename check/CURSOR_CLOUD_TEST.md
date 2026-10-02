@@ -99,6 +99,36 @@ fresh proof agent should be launched.
 `install` and `start`, so it cannot preserve this environment's Dockerfile
 base. The repository configuration and Dockerfile remain the source of truth.
 
+## Lean MCP environment update
+
+The infrastructure update from input commit `2e84d22` was integrated as
+`5c280f2` without removing the Docker marker, Verity revision, or solc version
+assertions added above. The resulting configuration:
+
+- installs `python3-venv` and `ripgrep` in the Docker image;
+- runs Build installation explicitly as user `ubuntu`;
+- warms `Mathlib.Tactic` instead of the entire Mathlib cache;
+- installs `lean-lsp-mcp==0.31.0` and 42 transitively version-pinned
+  dependencies into `.lake/lean-mcp`;
+- exposes `scripts/lean-mcp.sh` as the repository-local stdio launcher; and
+- keeps `.cursor/mcp.json` for Cursor IDE configuration.
+
+The built-in Cloud tool catalog for this run contains no Lean or LSP MCP
+namespace. A repository `.cursor/mcp.json` does not register a Cloud Agent MCP.
+To expose Lean MCP tools in a fresh Cloud run, add and enable a custom **stdio**
+MCP in personal or team Cloud MCP settings with:
+
+- command: `sh`
+- argument: the checked-out repository's absolute `scripts/lean-mcp.sh` path
+  (for a single-repository `/workspace` checkout, `/workspace/scripts/lean-mcp.sh`)
+
+The native Build verifies that the pinned server installs and starts far enough
+to print its version. A real `lean_diagnostic_messages` call still requires that
+account/team MCP registration and a fresh Cloud run.
+
+The final native Build evidence for this combined configuration follows after
+the branch-ref Build completes.
+
 References:
 
 - https://cursor.com/docs/cloud-agent/builds
