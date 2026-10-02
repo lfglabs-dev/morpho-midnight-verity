@@ -19,7 +19,7 @@ For any Midnight storage, `obligation`, `id` and `user` with
 5. `mapFactor(lossFactor) == 0 => newCredit == 0 && fee == 0`:
    "no credit/fee on total loss factor".
 
-`updatePositionViewProperties` below states this; `Proof.lean` proves it.
+`updatePositionViewProperties` below is the proof-generation target.
 
 ## Differences with the CVL rule
 
