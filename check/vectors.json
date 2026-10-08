@@ -1,0 +1,18 @@
+[
+  {"name": "A", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "50", "maturity": "100"},
+  {"name": "B", "credit": "1", "pending": "2", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "1", "maturity": "1"},
+  {"name": "credit-zero", "credit": "0", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "50", "maturity": "100"},
+  {"name": "pending-zero", "credit": "100", "pending": "0", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "50", "maturity": "100"},
+  {"name": "last-loss-max", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "340282366920938463463374607431768211455", "lastAccrual": "0", "timestamp": "50", "maturity": "100"},
+  {"name": "market-loss-max", "credit": "100", "pending": "10", "lossFactor": "340282366920938463463374607431768211455", "lastLoss": "0", "lastAccrual": "0", "timestamp": "50", "maturity": "100"},
+  {"name": "no-slash", "credit": "100", "pending": "10", "lossFactor": "5", "lastLoss": "5", "lastAccrual": "0", "timestamp": "50", "maturity": "100"},
+  {"name": "partial-slash", "credit": "100", "pending": "10", "lossFactor": "1", "lastLoss": "0", "lastAccrual": "1", "timestamp": "1", "maturity": "1"},
+  {"name": "at-maturity", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "100", "timestamp": "100", "maturity": "100"},
+  {"name": "after-maturity", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "150", "maturity": "100"},
+  {"name": "timestamp-eq-accrual", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "0", "maturity": "100"},
+  {"name": "exact-div", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "100", "maturity": "100"},
+  {"name": "remainder", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "1", "maturity": "3"},
+  {"name": "uint128-max", "credit": "340282366920938463463374607431768211455", "pending": "0", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "1", "timestamp": "1", "maturity": "1"},
+  {"name": "time-product-overflow", "credit": "1", "pending": "340282366920938463463374607431768211455", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "0", "timestamp": "340282366920938463463374607431768211458", "maturity": "340282366920938463463374607431768211459"},
+  {"name": "time-underflow", "credit": "100", "pending": "10", "lossFactor": "0", "lastLoss": "0", "lastAccrual": "10", "timestamp": "5", "maturity": "100"}
+]

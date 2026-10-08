@@ -1,0 +1,23 @@
+name: check
+on:
+  push:
+  pull_request:
+jobs:
+  lake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: leanprover/lean-action@v1
+        with:
+          build: false
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.5.0
+      - run: ./check/check.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: midnight-validation
+          path: out/
