@@ -535,4 +535,741 @@ theorem midPending_concrete : midPending =
    (Expr.localVar "_verity_slice_tmp_22")]
 := rfl
 
+def slashThenBranch : List Stmt :=
+  [.letVar "_verity_slice_tmp_1"
+      (.structMember "marketState" (.param "id") "lossFactor"),
+   .letVar "_verity_slice_tmp_2" (.literal 0),
+   .ite (.lt (.literal max128) (.localVar "_verity_slice_tmp_1"))
+     [.panic .arithmeticOverflow]
+     [.assignVar "_verity_slice_tmp_2"
+       (.sub (.literal max128) (.localVar "_verity_slice_tmp_1"))],
+   .letVar "_verity_slice_tmp_4" (.localVar "_verity_slice_tmp_2"),
+   .letVar "_verity_slice_tmp_3" (.literal 0),
+   .ite (.lt (.literal max128) (.localVar "_lastLossFactor"))
+     [.panic .arithmeticOverflow]
+     [.assignVar "_verity_slice_tmp_3"
+       (.sub (.literal max128) (.localVar "_lastLossFactor"))],
+   .letVar "_verity_slice_tmp_5" (.localVar "_verity_slice_tmp_3"),
+   .letVar "_verity_slice_tmp_6" (.literal 0),
+   .ite (.eq (.localVar "_credit") (.literal 0))
+     [.assignVar "_verity_slice_tmp_6"
+       (.mul (.localVar "_credit") (.localVar "_verity_slice_tmp_4"))]
+     [.ite (.eq (.div (.mul (.localVar "_credit") (.localVar "_verity_slice_tmp_4"))
+         (.localVar "_credit")) (.localVar "_verity_slice_tmp_4"))
+       [.assignVar "_verity_slice_tmp_6"
+         (.mul (.localVar "_credit") (.localVar "_verity_slice_tmp_4"))]
+       [.panic .arithmeticOverflow]],
+   .letVar "_verity_slice_tmp_7" (.localVar "_verity_slice_tmp_6"),
+   .letVar "_verity_slice_tmp_8" (.literal 0),
+   .ite (.eq (.localVar "_verity_slice_tmp_5") (.literal 0))
+     [.panic .divisionByZero]
+     [.assignVar "_verity_slice_tmp_8"
+       (.div (.localVar "_verity_slice_tmp_7") (.localVar "_verity_slice_tmp_5"))],
+   .assignVar "_verity_slice_tmp_9" (.localVar "_verity_slice_tmp_8")]
+
+theorem preCredit_parts :
+    preCredit =
+      [.letVar "_credit"
+          (.structMember2 "position" (.param "id") (.param "user") "credit"),
+       .letVar "_lastLossFactor"
+          (.structMember2 "position" (.param "id") (.param "user") "lastLossFactor"),
+       .letVar "_verity_slice_tmp_0"
+          (.lt (.localVar "_lastLossFactor") (.literal max128)),
+       .letVar "_verity_slice_tmp_9" (.literal 0),
+       .ite (.localVar "_verity_slice_tmp_0") slashThenBranch
+         [.assignVar "_verity_slice_tmp_9" (.literal 0)],
+       .letVar "postSlashCredit" (.localVar "_verity_slice_tmp_9")] := by
+  simp only [preCredit_concrete, slashThenBranch]
+  rfl
+
+/-- Collapse a chain of `lookup_bind_other` to the original env. -/
+macro "keep_lookup" : tactic => `(tactic|
+  (simp only [lookupValue] at *
+   repeat rw [lookup_bind_other _ _ _ _ (by decide)]
+   try rfl))
+
+theorem exec_slash_then
+    (oracle : DenoteOracle) (world : Verity.ContractState)
+    (id : BytesN 32) (user : Address) (s : DenoteState)
+    (hs : CreditLastLoss oracle world id user s)
+    (hlast : (midnight.position.lastLossFactor oracle world id user).val < max128) :
+    ∃ t,
+      execStmtList oracle midnight.model.fields s slashThenBranch = .continue t ∧
+      lookupValue t.bindings "_verity_slice_tmp_9" =
+        (midnight.position.credit oracle world id user).val *
+          (max128 - (midnight.marketState.lossFactor oracle world id).val) /
+          (max128 - (midnight.position.lastLossFactor oracle world id user).val) ∧
+      lookupValue t.bindings "_credit" =
+        (midnight.position.credit oracle world id user).val ∧
+      lookupValue t.bindings "_lastLossFactor" =
+        (midnight.position.lastLossFactor oracle world id user).val ∧
+      lookupValue t.bindings "id" = id.val ∧
+      t.world = world := by
+  set credit := (midnight.position.credit oracle world id user).val
+  set lastLoss := (midnight.position.lastLossFactor oracle world id user).val
+  set loss := (midnight.marketState.lossFactor oracle world id).val
+  have hcredit_le := credit_val_le_max oracle world id user
+  have hlast_le := lastLossFactor_val_le_max oracle world id user
+  have hloss_le := lossFactor_val_le_max oracle world id
+  have hid := hs.id_eq
+  have hworld := hs.world_eq
+  have hloss_ev := evalExpr_structMember_param oracle midnight.model s
+    "marketState" "id" "lossFactor" marketState_lossFactor_ready
+  simp only [hid, lossFactor_read_eq, hworld] at hloss_ev
+  have step1 := exec_let_continue oracle midnight.model.fields s
+    "_verity_slice_tmp_1" _ loss hloss_ev
+  set s1 : DenoteState := { s with bindings := bindValue s.bindings "_verity_slice_tmp_1" loss }
+  have step2 := exec_let_continue oracle midnight.model.fields s1
+    "_verity_slice_tmp_2" (.literal 0) 0 (eval_lit_zero _ _ _)
+  set s2 : DenoteState := { s1 with bindings := bindValue s1.bindings "_verity_slice_tmp_2" 0 }
+  have htmp1 : evalExpr oracle midnight.model.fields s2 (.localVar "_verity_slice_tmp_1") =
+      some loss := by
+    change some (lookupValue s2.bindings "_verity_slice_tmp_1") = some loss
+    simp only [s2, s1]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_same]
+  have step3 := exec_checked_sub oracle midnight.model.fields s2
+    "_verity_slice_tmp_2" (.literal max128) (.localVar "_verity_slice_tmp_1")
+    max128 loss (eval_lit_max128 _ _ _) htmp1 max128_lt hloss_le
+  set s3 : DenoteState :=
+    { s2 with bindings := bindValue s2.bindings "_verity_slice_tmp_2" (max128 - loss) }
+  have htmp2 : evalExpr oracle midnight.model.fields s3 (.localVar "_verity_slice_tmp_2") =
+      some (max128 - loss) := by
+    change some (lookupValue s3.bindings "_verity_slice_tmp_2") = some (max128 - loss)
+    simp only [s3, lookup_bind_same]
+  have step4 := exec_let_continue oracle midnight.model.fields s3
+    "_verity_slice_tmp_4" _ (max128 - loss) htmp2
+  set s4 : DenoteState :=
+    { s3 with bindings := bindValue s3.bindings "_verity_slice_tmp_4" (max128 - loss) }
+  have step5 := exec_let_continue oracle midnight.model.fields s4
+    "_verity_slice_tmp_3" (.literal 0) 0 (eval_lit_zero _ _ _)
+  set s5 : DenoteState := { s4 with bindings := bindValue s4.bindings "_verity_slice_tmp_3" 0 }
+  have hlast_ev : evalExpr oracle midnight.model.fields s5 (.localVar "_lastLossFactor") =
+      some lastLoss := by
+    change some (lookupValue s5.bindings "_lastLossFactor") = some lastLoss
+    simp only [s5, s4, s3, s2, s1]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), hs.lastLoss_eq]
+  have step6 := exec_checked_sub oracle midnight.model.fields s5
+    "_verity_slice_tmp_3" (.literal max128) (.localVar "_lastLossFactor")
+    max128 lastLoss (eval_lit_max128 _ _ _) hlast_ev max128_lt hlast_le
+  set s6 : DenoteState :=
+    { s5 with bindings := bindValue s5.bindings "_verity_slice_tmp_3" (max128 - lastLoss) }
+  have htmp3 : evalExpr oracle midnight.model.fields s6 (.localVar "_verity_slice_tmp_3") =
+      some (max128 - lastLoss) := by
+    change some (lookupValue s6.bindings "_verity_slice_tmp_3") = some (max128 - lastLoss)
+    simp only [s6, lookup_bind_same]
+  have step7 := exec_let_continue oracle midnight.model.fields s6
+    "_verity_slice_tmp_5" _ (max128 - lastLoss) htmp3
+  set s7 : DenoteState :=
+    { s6 with bindings := bindValue s6.bindings "_verity_slice_tmp_5" (max128 - lastLoss) }
+  have step8 := exec_let_continue oracle midnight.model.fields s7
+    "_verity_slice_tmp_6" (.literal 0) 0 (eval_lit_zero _ _ _)
+  set s8 : DenoteState := { s7 with bindings := bindValue s7.bindings "_verity_slice_tmp_6" 0 }
+  have hcredit_ev : evalExpr oracle midnight.model.fields s8 (.localVar "_credit") =
+      some credit := by
+    change some (lookupValue s8.bindings "_credit") = some credit
+    simp only [s8, s7, s6, s5, s4, s3, s2, s1]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      hs.credit_eq]
+  have htmp4 : evalExpr oracle midnight.model.fields s8 (.localVar "_verity_slice_tmp_4") =
+      some (max128 - loss) := by
+    change some (lookupValue s8.bindings "_verity_slice_tmp_4") = some (max128 - loss)
+    simp only [s8, s7, s6, s5, s4]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_same]
+  have hnum_le : max128 - loss ≤ max128 := Nat.sub_le _ _
+  have step9 := exec_checked_mul128 oracle midnight.model.fields s8
+    "_verity_slice_tmp_6" (.localVar "_credit") (.localVar "_verity_slice_tmp_4")
+    credit (max128 - loss) hcredit_ev htmp4 hcredit_le hnum_le
+  set s9 : DenoteState :=
+    { s8 with bindings := bindValue s8.bindings "_verity_slice_tmp_6" (credit * (max128 - loss)) }
+  have htmp6 : evalExpr oracle midnight.model.fields s9 (.localVar "_verity_slice_tmp_6") =
+      some (credit * (max128 - loss)) := by
+    change some (lookupValue s9.bindings "_verity_slice_tmp_6") = some (credit * (max128 - loss))
+    simp only [s9, lookup_bind_same]
+  have step10 := exec_let_continue oracle midnight.model.fields s9
+    "_verity_slice_tmp_7" _ (credit * (max128 - loss)) htmp6
+  set s10 : DenoteState :=
+    { s9 with bindings := bindValue s9.bindings "_verity_slice_tmp_7" (credit * (max128 - loss)) }
+  have step11 := exec_let_continue oracle midnight.model.fields s10
+    "_verity_slice_tmp_8" (.literal 0) 0 (eval_lit_zero _ _ _)
+  set s11 : DenoteState := { s10 with bindings := bindValue s10.bindings "_verity_slice_tmp_8" 0 }
+  have htmp7 : evalExpr oracle midnight.model.fields s11 (.localVar "_verity_slice_tmp_7") =
+      some (credit * (max128 - loss)) := by
+    change some (lookupValue s11.bindings "_verity_slice_tmp_7") = some (credit * (max128 - loss))
+    simp only [s11, s10]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_same]
+  have htmp5 : evalExpr oracle midnight.model.fields s11 (.localVar "_verity_slice_tmp_5") =
+      some (max128 - lastLoss) := by
+    change some (lookupValue s11.bindings "_verity_slice_tmp_5") = some (max128 - lastLoss)
+    simp only [s11, s10, s9, s8, s7]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_same]
+  have hden_pos : max128 - lastLoss ≠ 0 := Nat.sub_ne_zero_of_lt hlast
+  have hprod_lt : credit * (max128 - loss) < Uint256.modulus :=
+    lt_of_le_of_lt (Nat.mul_le_mul hcredit_le hnum_le) (by decide)
+  have hden_lt : max128 - lastLoss < Uint256.modulus :=
+    lt_of_le_of_lt (Nat.sub_le _ _) max128_lt
+  have step12 := exec_checked_div oracle midnight.model.fields s11
+    "_verity_slice_tmp_8"
+    (.localVar "_verity_slice_tmp_7") (.localVar "_verity_slice_tmp_5")
+    (credit * (max128 - loss)) (max128 - lastLoss)
+    htmp7 htmp5 hprod_lt hden_lt hden_pos
+  set s12 : DenoteState :=
+    { s11 with bindings := (bindValue s11.bindings "_verity_slice_tmp_8"
+        (credit * (max128 - loss) / (max128 - lastLoss))) }
+  have htmp8 : evalExpr oracle midnight.model.fields s12 (.localVar "_verity_slice_tmp_8") =
+      some (credit * (max128 - loss) / (max128 - lastLoss)) := by
+    change some (lookupValue s12.bindings "_verity_slice_tmp_8") =
+      some (credit * (max128 - loss) / (max128 - lastLoss))
+    simp only [s12, lookup_bind_same]
+  have step13 := exec_assign_continue oracle midnight.model.fields s12
+    "_verity_slice_tmp_9" _ _ htmp8
+  set s13 : DenoteState :=
+    { s12 with bindings := (bindValue s12.bindings "_verity_slice_tmp_9"
+        (credit * (max128 - loss) / (max128 - lastLoss))) }
+  refine ⟨s13, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · simp only [slashThenBranch]
+    rw [exec_cons_continue (t := s1) (hhead := step1),
+      exec_cons_continue (t := s2) (hhead := step2),
+      exec_cons_continue (t := s3) (hhead := step3),
+      exec_cons_continue (t := s4) (hhead := step4),
+      exec_cons_continue (t := s5) (hhead := step5),
+      exec_cons_continue (t := s6) (hhead := step6),
+      exec_cons_continue (t := s7) (hhead := step7),
+      exec_cons_continue (t := s8) (hhead := step8),
+      exec_cons_continue (t := s9) (hhead := step9),
+      exec_cons_continue (t := s10) (hhead := step10),
+      exec_cons_continue (t := s11) (hhead := step11),
+      exec_cons_continue (t := s12) (hhead := step12)]
+    exact step13
+  · change lookupValue s13.bindings "_verity_slice_tmp_9" = _
+    simp only [s13, lookup_bind_same]
+  · change lookupValue s13.bindings "_credit" = credit
+    simp only [s13, s12, s11, s10, s9, s8, s7, s6, s5, s4, s3, s2, s1]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), hs.credit_eq]
+  · change lookupValue s13.bindings "_lastLossFactor" = lastLoss
+    simp only [s13, s12, s11, s10, s9, s8, s7, s6, s5, s4, s3, s2, s1]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), hs.lastLoss_eq]
+  · change lookupValue s13.bindings "id" = id.val
+    simp only [s13, s12, s11, s10, s9, s8, s7, s6, s5, s4, s3, s2, s1]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+      lookup_bind_other _ _ _ _ (by decide), hs.id_eq]
+  · simp only [s13, s12, s11, s10, s9, s8, s7, s6, s5, s4, s3, s2, s1, hworld]
+
+/-- `preCredit` always continues with the slash formula. -/
+theorem preCredit_exec
+    (oracle : DenoteOracle) (world : Verity.ContractState)
+    (mat : Uint256) (id : BytesN 32) (user : Address) :
+    ∃ s,
+      execStmtList oracle midnight.model.fields (initState world mat id user) preCredit =
+        .continue s ∧
+      PostSlashState oracle world id user s := by
+  set credit := (midnight.position.credit oracle world id user).val
+  set lastLoss := (midnight.position.lastLossFactor oracle world id user).val
+  set loss := (midnight.marketState.lossFactor oracle world id).val
+  obtain ⟨sCL, hCL, hcredit, hlastLoss, hid, huser, hworld⟩ :=
+    exec_credit_and_lastLoss oracle world mat id user
+  have hsCL : CreditLastLoss oracle world id user sCL :=
+    ⟨hcredit, hlastLoss, hid, hworld⟩
+  have hlast_ev : evalExpr oracle midnight.model.fields sCL (Expr.localVar "_lastLossFactor") =
+      some lastLoss := by
+    simp only [evalExpr, lastLoss, hlastLoss]
+  have hlt := eval_lt_of_vals oracle midnight.model.fields sCL
+    (Expr.localVar "_lastLossFactor") (Expr.literal max128) lastLoss max128
+    hlast_ev (eval_lit_max128 _ _ _)
+  have step_tmp0 := exec_let_continue oracle midnight.model.fields sCL
+    "_verity_slice_tmp_0" _ (boolWord (decide (lastLoss < max128))) hlt
+  set s0 : DenoteState :=
+    { sCL with bindings := (bindValue sCL.bindings "_verity_slice_tmp_0"
+        (boolWord (decide (lastLoss < max128)))) }
+  have step_tmp9 := exec_let_continue oracle midnight.model.fields s0
+    "_verity_slice_tmp_9" (Expr.literal 0) 0 (eval_lit_zero _ _ _)
+  set sTmp : DenoteState :=
+    { s0 with bindings := bindValue s0.bindings "_verity_slice_tmp_9" 0 }
+  have hsTmp : CreditLastLoss oracle world id user sTmp := by
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · change lookupValue sTmp.bindings "_credit" = credit
+      simp only [sTmp, s0]
+      rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide), hcredit]
+    · change lookupValue sTmp.bindings "_lastLossFactor" = lastLoss
+      simp only [sTmp, s0]
+      rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide), hlastLoss]
+    · change lookupValue sTmp.bindings "id" = id.val
+      simp only [sTmp, s0]
+      rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide), hid]
+    · simp only [sTmp, s0, hworld]
+  have hcond_ev : evalExpr oracle midnight.model.fields sTmp (Expr.localVar "_verity_slice_tmp_0") =
+      some (boolWord (decide (lastLoss < max128))) := by
+    change some (lookupValue sTmp.bindings "_verity_slice_tmp_0") =
+      some (boolWord (decide (lastLoss < max128)))
+    simp only [sTmp, s0]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_same]
+  by_cases hltL : lastLoss < max128
+  · have hbw : boolWord (decide (lastLoss < max128)) = 1 := boolWord_true_of hltL
+    have hcond1 : evalExpr oracle midnight.model.fields sTmp
+        (Expr.localVar "_verity_slice_tmp_0") = some 1 := by
+      simpa [hbw] using hcond_ev
+    obtain ⟨sThen, hThen, htmp9, hcred', hlast', hid', hworld'⟩ :=
+      exec_slash_then oracle world id user sTmp hsTmp hltL
+    have step_ite :
+        execStmtList oracle midnight.model.fields sTmp
+          [Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+            [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)]] =
+          .continue sThen := by
+      rw [exec_ite_one oracle midnight.model.fields sTmp _ _ _ hcond1, hThen]
+    have hpsc_ev : evalExpr oracle midnight.model.fields sThen
+        (Expr.localVar "_verity_slice_tmp_9") =
+        some (credit * (max128 - loss) / (max128 - lastLoss)) := by
+      simp only [evalExpr, credit, loss, lastLoss, htmp9]
+    have step_psc := exec_let_continue oracle midnight.model.fields sThen
+      "postSlashCredit" _ (credit * (max128 - loss) / (max128 - lastLoss)) hpsc_ev
+    set sFinal : DenoteState :=
+      { sThen with bindings := (bindValue sThen.bindings "postSlashCredit"
+          (credit * (max128 - loss) / (max128 - lastLoss))) }
+    refine ⟨sFinal, ?_, ⟨?_, ?_, ?_, ?_⟩⟩
+    · rw [preCredit_parts]
+      have hshape :
+          [Stmt.letVar "_credit"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "credit"),
+           Stmt.letVar "_lastLossFactor"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "lastLossFactor"),
+           Stmt.letVar "_verity_slice_tmp_0"
+              (Expr.lt (Expr.localVar "_lastLossFactor") (Expr.literal max128)),
+           Stmt.letVar "_verity_slice_tmp_9" (Expr.literal 0),
+           Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+             [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)],
+           Stmt.letVar "postSlashCredit" (Expr.localVar "_verity_slice_tmp_9")] =
+          [Stmt.letVar "_credit"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "credit"),
+           Stmt.letVar "_lastLossFactor"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "lastLossFactor")] ++
+          [Stmt.letVar "_verity_slice_tmp_0"
+              (Expr.lt (Expr.localVar "_lastLossFactor") (Expr.literal max128)),
+           Stmt.letVar "_verity_slice_tmp_9" (Expr.literal 0),
+           Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+             [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)],
+           Stmt.letVar "postSlashCredit" (Expr.localVar "_verity_slice_tmp_9")] := rfl
+      rw [hshape, exec_append, hCL]
+      change execStmtList oracle midnight.model.fields sCL
+          [Stmt.letVar "_verity_slice_tmp_0"
+              (Expr.lt (Expr.localVar "_lastLossFactor") (Expr.literal max128)),
+           Stmt.letVar "_verity_slice_tmp_9" (Expr.literal 0),
+           Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+             [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)],
+           Stmt.letVar "postSlashCredit" (Expr.localVar "_verity_slice_tmp_9")] =
+          .continue sFinal
+      rw [exec_cons_continue (t := s0) (hhead := step_tmp0),
+        exec_cons_continue (t := sTmp) (hhead := step_tmp9),
+        exec_cons_continue (t := sThen) (hhead := step_ite)]
+      exact step_psc
+    · change lookupValue sFinal.bindings "_credit" = credit
+      simp only [sFinal]
+      rw [lookup_bind_other _ _ _ _ (by decide), hcred']
+    · change lookupValue sFinal.bindings "_lastLossFactor" = lastLoss
+      simp only [sFinal]
+      rw [lookup_bind_other _ _ _ _ (by decide), hlast']
+    · change lookupValue sFinal.bindings "postSlashCredit" =
+        slashFormula credit lastLoss loss
+      simp only [sFinal, slashFormula, hltL, ↓reduceIte, lookup_bind_same]
+    · simp only [sFinal, hworld']
+  · have hbw : boolWord (decide (lastLoss < max128)) = 0 := boolWord_false_of_not hltL
+    have step_ite :
+        execStmtList oracle midnight.model.fields sTmp
+          [Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+            [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)]] =
+          .continue { sTmp with bindings := bindValue sTmp.bindings "_verity_slice_tmp_9" 0 } := by
+      have h0 : boolWord (decide (lastLoss < max128)) = 0 := hbw
+      rw [exec_ite_false oracle midnight.model.fields sTmp _ _ _ _ hcond_ev h0]
+      exact exec_assign_continue oracle midnight.model.fields sTmp
+        "_verity_slice_tmp_9" (Expr.literal 0) 0 (eval_lit_zero _ _ _)
+    set sElse : DenoteState :=
+      { sTmp with bindings := bindValue sTmp.bindings "_verity_slice_tmp_9" 0 }
+    have hpsc_ev : evalExpr oracle midnight.model.fields sElse
+        (Expr.localVar "_verity_slice_tmp_9") = some 0 := by
+      change some (lookupValue sElse.bindings "_verity_slice_tmp_9") = some 0
+      simp only [sElse, lookup_bind_same]
+    have step_psc := exec_let_continue oracle midnight.model.fields sElse
+      "postSlashCredit" (Expr.localVar "_verity_slice_tmp_9") 0 hpsc_ev
+    set sFinal : DenoteState :=
+      { sElse with bindings := bindValue sElse.bindings "postSlashCredit" 0 }
+    refine ⟨sFinal, ?_, ⟨?_, ?_, ?_, ?_⟩⟩
+    · rw [preCredit_parts]
+      have hshape :
+          [Stmt.letVar "_credit"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "credit"),
+           Stmt.letVar "_lastLossFactor"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "lastLossFactor"),
+           Stmt.letVar "_verity_slice_tmp_0"
+              (Expr.lt (Expr.localVar "_lastLossFactor") (Expr.literal max128)),
+           Stmt.letVar "_verity_slice_tmp_9" (Expr.literal 0),
+           Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+             [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)],
+           Stmt.letVar "postSlashCredit" (Expr.localVar "_verity_slice_tmp_9")] =
+          [Stmt.letVar "_credit"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "credit"),
+           Stmt.letVar "_lastLossFactor"
+              (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "lastLossFactor")] ++
+          [Stmt.letVar "_verity_slice_tmp_0"
+              (Expr.lt (Expr.localVar "_lastLossFactor") (Expr.literal max128)),
+           Stmt.letVar "_verity_slice_tmp_9" (Expr.literal 0),
+           Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+             [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)],
+           Stmt.letVar "postSlashCredit" (Expr.localVar "_verity_slice_tmp_9")] := rfl
+      rw [hshape, exec_append, hCL]
+      change execStmtList oracle midnight.model.fields sCL
+          [Stmt.letVar "_verity_slice_tmp_0"
+              (Expr.lt (Expr.localVar "_lastLossFactor") (Expr.literal max128)),
+           Stmt.letVar "_verity_slice_tmp_9" (Expr.literal 0),
+           Stmt.ite (Expr.localVar "_verity_slice_tmp_0") slashThenBranch
+             [Stmt.assignVar "_verity_slice_tmp_9" (Expr.literal 0)],
+           Stmt.letVar "postSlashCredit" (Expr.localVar "_verity_slice_tmp_9")] =
+          .continue sFinal
+      rw [exec_cons_continue (t := s0) (hhead := step_tmp0),
+        exec_cons_continue (t := sTmp) (hhead := step_tmp9),
+        exec_cons_continue (t := sElse) (hhead := step_ite)]
+      exact step_psc
+    · change lookupValue sFinal.bindings "_credit" = credit
+      simp only [sFinal, sElse, sTmp, s0]
+      rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+        lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide), hcredit]
+    · change lookupValue sFinal.bindings "_lastLossFactor" = lastLoss
+      simp only [sFinal, sElse, sTmp, s0]
+      rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+        lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide), hlastLoss]
+    · change lookupValue sFinal.bindings "postSlashCredit" =
+        slashFormula credit lastLoss loss
+      simp only [sFinal, slashFormula, hltL, ↓reduceIte, lookup_bind_same]
+    · simp only [sFinal, sElse, sTmp, s0, hworld]
+
+/-- A successful `preCredit` continue yields `PostSlashState`. -/
+theorem preCredit_continue_postSlash
+    (oracle : DenoteOracle) (world : Verity.ContractState)
+    (mat : Uint256) (id : BytesN 32) (user : Address) (s : DenoteState)
+    (h : execStmtList oracle midnight.model.fields (initState world mat id user) preCredit =
+      .continue s) :
+    PostSlashState oracle world id user s := by
+  obtain ⟨s', h', hs'⟩ := preCredit_exec oracle world mat id user
+  rw [h'] at h
+  exact (StmtOutcome.continue.inj h) ▸ hs'
+
+/-- The then-branch of midPending's `credit > 0` ternary. -/
+def pendingThenBranch : List Stmt :=
+  match midPending with
+  | [_, _, _, .ite _ yes _, _] => yes
+  | _ => []
+
+/-- All but the last two statements of `pendingThenBranch`. -/
+def pendingThenPre : List Stmt := List.dropLast (List.dropLast pendingThenBranch)
+
+theorem midPending_parts :
+    midPending =
+      [.letVar "_pendingFee"
+          (.structMember2 "position" (.param "id") (.param "user") "pendingFee"),
+       .letVar "_verity_slice_tmp_10" (.gt (.localVar "_credit") (.literal 0)),
+       .letVar "_verity_slice_tmp_22" (.literal 0),
+       .ite (.localVar "_verity_slice_tmp_10") pendingThenBranch
+         [.assignVar "_verity_slice_tmp_22" (.literal 0)],
+       .letVar "postSlashPendingFee" (.localVar "_verity_slice_tmp_22")] := by
+  simp only [pendingThenBranch, midPending_concrete]
+
+theorem pendingThen_eq_pre_suf :
+    pendingThenBranch = pendingThenPre ++
+      [.ite (.lt (.localVar "_pendingFee") (.localVar "_verity_slice_tmp_20"))
+        [.panic .arithmeticOverflow]
+        [.assignVar "_verity_slice_tmp_21"
+          (.sub (.localVar "_pendingFee") (.localVar "_verity_slice_tmp_20"))],
+       .assignVar "_verity_slice_tmp_22" (.localVar "_verity_slice_tmp_21")] := by
+  unfold pendingThenPre pendingThenBranch
+  simp only [midPending_concrete]
+  rfl
+
+theorem pendingThenPre_keeps_pendingFee :
+    prefixList ["_pendingFee"] pendingThenPre = true := by
+  unfold pendingThenPre pendingThenBranch
+  simp only [midPending_concrete]
+  decide
+
+/-- Successful continue of the pending then-branch leaves `tmp22 ≤ pendingFee`. -/
+theorem pendingThen_tmp22_le
+    (oracle : DenoteOracle) (fs : List Field) (s t : DenoteState) (pending : Nat)
+    (hpend : lookupValue s.bindings "_pendingFee" = pending)
+    (hpend_le : pending ≤ max128)
+    (h : execStmtList oracle fs s pendingThenBranch = .continue t) :
+    lookupValue t.bindings "_verity_slice_tmp_22" ≤ pending := by
+  rw [pendingThen_eq_pre_suf] at h
+  obtain ⟨sPre, hPre, hSuf⟩ :=
+    split_prefix_continue oracle fs s t pendingThenPre
+      [.ite (.lt (.localVar "_pendingFee") (.localVar "_verity_slice_tmp_20"))
+        [.panic .arithmeticOverflow]
+        [.assignVar "_verity_slice_tmp_21"
+          (.sub (.localVar "_pendingFee") (.localVar "_verity_slice_tmp_20"))],
+       .assignVar "_verity_slice_tmp_22" (.localVar "_verity_slice_tmp_21")] h
+  have hf := list_frame oracle fs s pendingThenPre ["_pendingFee"]
+    pendingThenPre_keeps_pendingFee
+  simp only [Frame, hPre] at hf
+  have hpendPre : lookupValue sPre.bindings "_pendingFee" = pending := by
+    rw [hf.2 "_pendingFee" (by simp), hpend]
+  set sufChecked : List Stmt :=
+    [Stmt.ite (Expr.lt (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20"))
+      [Stmt.panic PanicCode.arithmeticOverflow]
+      [Stmt.assignVar "_verity_slice_tmp_21"
+        (Expr.sub (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20"))]]
+  set sufAssign : List Stmt :=
+    [Stmt.assignVar "_verity_slice_tmp_22" (Expr.localVar "_verity_slice_tmp_21")]
+  have hsuf_eq :
+      [Stmt.ite (Expr.lt (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20"))
+        [Stmt.panic PanicCode.arithmeticOverflow]
+        [Stmt.assignVar "_verity_slice_tmp_21"
+          (Expr.sub (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20"))],
+       Stmt.assignVar "_verity_slice_tmp_22" (Expr.localVar "_verity_slice_tmp_21")] =
+      sufChecked ++ sufAssign := by
+    simp only [sufChecked, sufAssign]
+    rfl
+  rw [hsuf_eq] at hSuf
+  obtain ⟨sSub, hSub, hAsgn⟩ :=
+    split_prefix_continue oracle fs sPre t sufChecked sufAssign hSuf
+  have hpendE : evalExpr oracle fs sPre (Expr.localVar "_pendingFee") = some pending := by
+    simp only [evalExpr, hpendPre]
+  cases htmp20 : evalExpr oracle fs sPre (Expr.localVar "_verity_slice_tmp_20") with
+  | none =>
+    have hlt_none :
+        evalExpr oracle fs sPre
+          (Expr.lt (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20")) =
+          none := by
+      change (Option.bind (evalExpr oracle fs sPre (Expr.localVar "_pendingFee"))
+          fun lhs => Option.bind (evalExpr oracle fs sPre (Expr.localVar "_verity_slice_tmp_20"))
+            fun rhs => some (boolWord (decide (lhs < rhs)))) = none
+      rw [hpendE, htmp20]
+      rfl
+    simp only [sufChecked] at hSub
+    rw [exec_singleton, execStmt, hlt_none] at hSub
+    cases hSub
+  | some x =>
+    have hlt := eval_lt_of_vals oracle fs sPre
+      (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20") pending x hpendE
+      htmp20
+    by_cases hltPx : pending < x
+    · have hbw : boolWord (decide (pending < x)) = 1 := boolWord_true_of hltPx
+      have hcond1 : evalExpr oracle fs sPre
+          (Expr.lt (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20")) =
+          some 1 := by
+        simpa [hlt, hbw]
+      simp only [sufChecked] at hSub
+      rw [exec_ite_one oracle fs sPre _ _ _ hcond1] at hSub
+      simp only [exec_singleton, execStmt] at hSub
+      cases hSub
+    · have hle : x ≤ pending := Nat.not_lt.mp hltPx
+      have hbw : boolWord (decide (pending < x)) = 0 := boolWord_false_of_not hltPx
+      have hcond0 : evalExpr oracle fs sPre
+          (Expr.lt (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20")) =
+          some 0 := by
+        simpa [hlt, hbw]
+      have hpend_mod : pending < Uint256.modulus := lt_of_le_of_lt hpend_le max128_lt
+      have hsub := eval_sub_of_vals oracle fs sPre
+        (Expr.localVar "_pendingFee") (Expr.localVar "_verity_slice_tmp_20")
+        pending x hpendE htmp20 hpend_mod hle
+      have step_sub :
+          execStmtList oracle fs sPre sufChecked =
+            .continue { sPre with bindings :=
+              (bindValue sPre.bindings "_verity_slice_tmp_21" (pending - x)) } := by
+        simp only [sufChecked]
+        rw [exec_ite_false oracle fs sPre _ _ _ _ hcond0 rfl]
+        exact exec_assign_continue oracle fs sPre "_verity_slice_tmp_21" _ _ hsub
+      rw [step_sub] at hSub
+      cases hSub
+      set sSub' : DenoteState :=
+        { sPre with bindings := (bindValue sPre.bindings "_verity_slice_tmp_21" (pending - x)) }
+      have htmp21 : evalExpr oracle fs sSub' (Expr.localVar "_verity_slice_tmp_21") =
+          some (pending - x) := by
+        simp only [evalExpr, sSub', lookup_bind_same]
+      have step_asgn := exec_assign_continue oracle fs sSub'
+        "_verity_slice_tmp_22" _ (pending - x) htmp21
+      simp only [sufAssign] at hAsgn
+      rw [step_asgn] at hAsgn
+      cases hAsgn
+      change lookupValue
+        { sSub' with bindings :=
+            (bindValue sSub'.bindings "_verity_slice_tmp_22" (pending - x)) }.bindings
+        "_verity_slice_tmp_22" ≤ pending
+      rw [lookup_bind_same]
+      exact Nat.sub_le pending x
+
+/-- After a successful `midPending` continue: pending is not increased; zero if credit is 0. -/
+theorem midPending_continue_le
+    (oracle : DenoteOracle) (world : Verity.ContractState)
+    (id : BytesN 32) (user : Address) (s0 s : DenoteState)
+    (hps : PostSlashState oracle world id user s0)
+    (hid : lookupValue s0.bindings "id" = id.val)
+    (huser : lookupValue s0.bindings "user" = user.val)
+    (h : execStmtList oracle midnight.model.fields s0 midPending = .continue s) :
+    lookupValue s.bindings "postSlashPendingFee" ≤
+      (midnight.position.pendingFee oracle world id user).val ∧
+    ((midnight.position.credit oracle world id user).val = 0 →
+      lookupValue s.bindings "postSlashPendingFee" = 0) := by
+  set credit := (midnight.position.credit oracle world id user).val
+  set pending := (midnight.position.pendingFee oracle world id user).val
+  have hpend_le := pendingFee_val_le_max oracle world id user
+  have hpend_ev := evalExpr_structMember2_param oracle midnight.model s0
+    "position" "id" "user" "pendingFee" position_pendingFee_ready
+  simp only [hid, huser, pendingFee_read_eq, hps.world_eq] at hpend_ev
+  have step_pend := exec_let_continue oracle midnight.model.fields s0
+    "_pendingFee" _ pending hpend_ev
+  set s1 : DenoteState :=
+    { s0 with bindings := bindValue s0.bindings "_pendingFee" pending }
+  have hcred1 : lookupValue s1.bindings "_credit" = credit := by
+    simp only [s1]
+    rw [lookup_bind_other _ _ _ _ (by decide), hps.credit_eq]
+  have hgt := eval_gt_of_vals oracle midnight.model.fields s1
+    (.localVar "_credit") (.literal 0) credit 0
+    (by simp only [evalExpr, hcred1]) (eval_lit_zero _ _ _)
+  have step_t10 := exec_let_continue oracle midnight.model.fields s1
+    "_verity_slice_tmp_10" _ (boolWord (decide (0 < credit))) hgt
+  set s2 : DenoteState :=
+    { s1 with bindings := (bindValue s1.bindings "_verity_slice_tmp_10"
+        (boolWord (decide (0 < credit)))) }
+  have step_t22 := exec_let_continue oracle midnight.model.fields s2
+    "_verity_slice_tmp_22" (.literal 0) 0 (eval_lit_zero _ _ _)
+  set s3 : DenoteState :=
+    { s2 with bindings := bindValue s2.bindings "_verity_slice_tmp_22" 0 }
+  have hcond_ev : evalExpr oracle midnight.model.fields s3 (.localVar "_verity_slice_tmp_10") =
+      some (boolWord (decide (0 < credit))) := by
+    change some (lookupValue s3.bindings "_verity_slice_tmp_10") = _
+    simp only [s3, s2]
+    rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_same]
+  rw [midPending_parts] at h
+  have hflat :
+      [Stmt.letVar "_pendingFee"
+          (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "pendingFee"),
+       Stmt.letVar "_verity_slice_tmp_10" (Expr.gt (Expr.localVar "_credit") (Expr.literal 0)),
+       Stmt.letVar "_verity_slice_tmp_22" (Expr.literal 0),
+       Stmt.ite (Expr.localVar "_verity_slice_tmp_10") pendingThenBranch
+         [Stmt.assignVar "_verity_slice_tmp_22" (Expr.literal 0)],
+       Stmt.letVar "postSlashPendingFee" (Expr.localVar "_verity_slice_tmp_22")] =
+      [Stmt.letVar "_pendingFee"
+          (Expr.structMember2 "position" (Expr.param "id") (Expr.param "user") "pendingFee")] ++
+      [Stmt.letVar "_verity_slice_tmp_10" (Expr.gt (Expr.localVar "_credit") (Expr.literal 0)),
+       Stmt.letVar "_verity_slice_tmp_22" (Expr.literal 0),
+       Stmt.ite (Expr.localVar "_verity_slice_tmp_10") pendingThenBranch
+         [Stmt.assignVar "_verity_slice_tmp_22" (Expr.literal 0)],
+       Stmt.letVar "postSlashPendingFee" (Expr.localVar "_verity_slice_tmp_22")] := rfl
+  rw [hflat, exec_append, step_pend] at h
+  change execStmtList oracle midnight.model.fields s1
+      [Stmt.letVar "_verity_slice_tmp_10" (Expr.gt (Expr.localVar "_credit") (Expr.literal 0)),
+       Stmt.letVar "_verity_slice_tmp_22" (Expr.literal 0),
+       Stmt.ite (Expr.localVar "_verity_slice_tmp_10") pendingThenBranch
+         [Stmt.assignVar "_verity_slice_tmp_22" (Expr.literal 0)],
+       Stmt.letVar "postSlashPendingFee" (Expr.localVar "_verity_slice_tmp_22")] =
+      .continue s at h
+  rw [exec_cons_continue (t := s2) (hhead := step_t10),
+    exec_cons_continue (t := s3) (hhead := step_t22)] at h
+  by_cases hc0 : credit = 0
+  · have hbw : boolWord (decide (0 < credit)) = 0 := by simp [boolWord, hc0]
+    have hcond0 : evalExpr oracle midnight.model.fields s3
+        (Expr.localVar "_verity_slice_tmp_10") = some 0 := by
+      simpa [hbw] using hcond_ev
+    have step_ite :
+        execStmtList oracle midnight.model.fields s3
+          [Stmt.ite (Expr.localVar "_verity_slice_tmp_10") pendingThenBranch
+            [Stmt.assignVar "_verity_slice_tmp_22" (Expr.literal 0)]] =
+          .continue { s3 with bindings := bindValue s3.bindings "_verity_slice_tmp_22" 0 } := by
+      rw [exec_ite_false oracle midnight.model.fields s3 _ _ _ _ hcond0 rfl]
+      exact exec_assign_continue oracle midnight.model.fields s3
+        "_verity_slice_tmp_22" (Expr.literal 0) 0 (eval_lit_zero _ _ _)
+    set s4 : DenoteState :=
+      { s3 with bindings := bindValue s3.bindings "_verity_slice_tmp_22" 0 }
+    have htmp : evalExpr oracle midnight.model.fields s4 (.localVar "_verity_slice_tmp_22") =
+        some 0 := by
+      change some (lookupValue s4.bindings "_verity_slice_tmp_22") = some 0
+      simp only [s4, lookup_bind_same]
+    have step_final := exec_let_continue oracle midnight.model.fields s4
+      "postSlashPendingFee" _ 0 htmp
+    set sFinal : DenoteState :=
+      { s4 with bindings := bindValue s4.bindings "postSlashPendingFee" 0 }
+    have hexec :
+        execStmtList oracle midnight.model.fields s3
+          [Stmt.ite (Expr.localVar "_verity_slice_tmp_10") pendingThenBranch
+            [Stmt.assignVar "_verity_slice_tmp_22" (Expr.literal 0)],
+           Stmt.letVar "postSlashPendingFee" (Expr.localVar "_verity_slice_tmp_22")] =
+          .continue sFinal := by
+      rw [exec_cons_continue (t := s4) (hhead := step_ite)]
+      exact step_final
+    rw [hexec] at h
+    have hsEq : s = sFinal := StmtOutcome.continue.inj h.symm
+    subst hsEq
+    refine ⟨Nat.zero_le _, fun _ => ?_⟩
+    change lookupValue sFinal.bindings "postSlashPendingFee" = 0
+    simp only [sFinal, lookup_bind_same]
+  · have hpos : 0 < credit := Nat.pos_of_ne_zero hc0
+    have hbw : boolWord (decide (0 < credit)) = 1 := boolWord_true_of hpos
+    have hcond1 : evalExpr oracle midnight.model.fields s3
+        (Expr.localVar "_verity_slice_tmp_10") = some 1 := by
+      simpa [hbw] using hcond_ev
+    have hlist :
+        [Stmt.ite (Expr.localVar "_verity_slice_tmp_10") pendingThenBranch
+          [Stmt.assignVar "_verity_slice_tmp_22" (Expr.literal 0)],
+         Stmt.letVar "postSlashPendingFee" (Expr.localVar "_verity_slice_tmp_22")] =
+        [Stmt.ite (Expr.localVar "_verity_slice_tmp_10") pendingThenBranch
+          [Stmt.assignVar "_verity_slice_tmp_22" (Expr.literal 0)]] ++
+        [Stmt.letVar "postSlashPendingFee" (Expr.localVar "_verity_slice_tmp_22")] := rfl
+    rw [hlist, exec_append,
+      exec_ite_one oracle midnight.model.fields s3 _ _ _ hcond1] at h
+    match hy : execStmtList oracle midnight.model.fields s3 pendingThenBranch with
+    | .revert => simp only [hy] at h; cases h
+    | .stop _ => simp only [hy] at h; cases h
+    | .return _ _ => simp only [hy] at h; cases h
+    | .continue sYes =>
+      simp only [hy] at h
+      have hpend3 : lookupValue s3.bindings "_pendingFee" = pending := by
+        simp only [s3, s2, s1]
+        rw [lookup_bind_other _ _ _ _ (by decide), lookup_bind_other _ _ _ _ (by decide),
+          lookup_bind_same]
+      have hle := pendingThen_tmp22_le oracle midnight.model.fields s3 sYes pending
+        hpend3 hpend_le hy
+      match hv : evalExpr oracle midnight.model.fields sYes
+          (Expr.localVar "_verity_slice_tmp_22") with
+      | none =>
+        simp only [exec_singleton, execStmt, hv] at h
+        cases h
+      | some v =>
+        have hv'' : v = lookupValue sYes.bindings "_verity_slice_tmp_22" := by
+          simpa [evalExpr] using Option.some.inj hv.symm
+        have hstep := exec_let_continue oracle midnight.model.fields sYes
+          "postSlashPendingFee" _ v hv
+        rw [hstep] at h
+        have hsEq : s = { sYes with bindings :=
+            (bindValue sYes.bindings "postSlashPendingFee" v) } :=
+          StmtOutcome.continue.inj h.symm
+        subst hsEq
+        refine ⟨?_, fun h' => (hc0 h').elim⟩
+        change lookupValue
+          { sYes with bindings := (bindValue sYes.bindings "postSlashPendingFee" v) }.bindings
+          "postSlashPendingFee" ≤ pending
+        rw [lookup_bind_same, hv'']
+        exact hle
+
+
 end Midnight.Lemmas
