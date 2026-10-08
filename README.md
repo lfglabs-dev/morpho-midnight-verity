@@ -1,57 +1,47 @@
-# Morpho Midnight proof-generation sandbox
+# Prove `updatePositionViewProperties`
 
-This branch keeps the deterministic Solidity import and the Certora specification
-`Midnight.Spec.updatePositionViewProperties`, but removes the existing proof and
-its supporting lemmas. The task is to generate a new kernel-checked proof.
+`Midnight/Spec.lean` states the Certora rule `updatePositionViewProperties` on the Solidity imported by `Midnight/Import.lean`. `Midnight/Proof.lean` does not prove it yet.
 
-Use the short [Cursor proof prompt](.cursor/proof-prompt.md) when submitting
-this task. Select GPT-5.6 and the validated Build in the launch configuration;
-the prompt delegates proof constraints to `AGENTS.md`.
+Produce a proof that `./check/check_proof.sh` accepts.
 
-The toolchain is Lean **4.31.0**, Verity
-**9b472a8a48a9990337845f1720a20f374fa1e9cd**, and checksum-pinned solc **0.8.34**.
-Lake dependencies and the Midnight Solidity submodule are pinned in git.
+## What you may edit
 
-Cursor Cloud reads [.cursor/environment.json](.cursor/environment.json), with
-[.cursor/Dockerfile](.cursor/Dockerfile) and `sh scripts/setup.sh` as install hook.
-See [Cursor setup documentation](https://cursor.com/docs/cloud-agent/setup).
-Cursor Builds currently use default-branch configuration; launching on a feature
-branch may reuse the active Build. Verify the image marker before assuming the
-branch Dockerfile was applied.
+- `Midnight/Proof.lean`
+- new files under `Midnight/`, including `Midnight/Lemmas/`
 
-Local container workflow:
+## What you may not edit
 
-```sh
-docker build -f .cursor/Dockerfile -t morpho-proof .
-docker run --rm -v "$PWD:/workspace" -w /workspace morpho-proof sh scripts/setup.sh
-# After generating Midnight/Proof.lean:
-docker run --rm -v "$PWD:/workspace" -w /workspace morpho-proof sh scripts/verify-proof.sh
-```
+- `Midnight/Import.lean`, `Midnight/Spec.lean`, `Midnight.lean`
+- `lakefile.lean`, `lake-manifest.json`, `lean-toolchain`
+- `vendor/`
+- `check/`
 
-The verifier checks the theorem's axioms and rejects `sorryAx` and additional
-axioms. `./check/check.sh` additionally checks import provenance and differential
-execution after the proof is generated. See [check/README.md](check/README.md)
-for the import's trust boundary.
+The checker hashes those files and rejects the run if they change.
 
-## Agent diagnostics
+## What counts as done
 
-`sh scripts/doctor.sh` checks the installed toolchain, pinned dependency, solc,
-compiled import/specification, and MCP executable. Cursor install and startup
-also require the Docker image marker so a default image cannot pass readiness.
+`./check/check_proof.sh` exits 0. That means:
 
-`lean-lsp-mcp` 0.31.0 and its Python dependencies are pinned and preinstalled by
-the install hook. `sh scripts/lean-mcp.sh` launches its stdio server; it provides
-compiler diagnostics, goal states, hover information, and local theorem search.
-`.cursor/mcp.json` configures Cursor IDE. Cursor Cloud custom MCP servers must be
-enabled in the account/team MCP settings; the repo config alone does not enable
-them. Configure the same stdio wrapper using the actual Cloud workspace path.
-Shell-based compilation and verification work without enabling the MCP.
+1. `lake build` succeeds.
+2. `Midnight.updatePositionViewProperties` has type `Midnight.Spec.updatePositionViewProperties`.
+3. Its axioms are only `propext`, `Classical.choice`, and `Quot.sound`.
 
-To exercise real diagnostics and proof goals:
+`sorry`, `admit`, and extra `axiom`s fail the check. The stub in `Midnight/Proof.lean` fails it.
+
+## Hint
+
+- A successful call does not underflow the final checked subtractions, so `newCredit + fee` is the post-slash credit and `newPendingFee + fee` is at most the old pending fee. `lastLossFactor ≤ lossFactor` means slashing multiplies credit by at most one. The exact formula for `fee` is not needed.
+- Use `import Compiler.SolidityImport.Proofs` (and `Compiler.SolidityImport.Access`):
+  - `functionBody midnight.model "updatePositionView"` gets the statement list.
+  - `splitAfter "postSlashCredit"`, `splitAfter "postSlashPendingFee"`, and `splitAfter "fee"` slice the body by Solidity local variable names.
+  - `split_prefix`, `split_prefix_continue`, `ends_return`, and `list_frame` (dischargeable `by decide`) step across those slices and frame unmodified bindings across `fee` without executing `fee`.
+  - `evalExpr_structMember2_param`, `evalExpr_structMember_param`, `sub_word`, `mul_word128`, `div_word`, `mask_eq`, and `word_of_small` discharge the storage reads and 256-bit word arithmetic.
+
+## Loop
 
 ```sh
-.lake/lean-mcp/bin/python scripts/check-lean-mcp.py
+lake build Midnight.Proof
+./check/check_proof.sh
 ```
 
-The smoke test checks the unchanged Morpho specification, detects an intentionally
-unfinished temporary example, and reads its goal. The temporary file is removed.
+Work only in this directory. Do not read parent directories or other checkouts. Do not check the correct answer from github or git history.
