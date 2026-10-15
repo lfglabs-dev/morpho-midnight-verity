@@ -1,0 +1,10 @@
+function wExp
+  importable true
+  denoteCovered true
+  compilable true
+  compilerProofCovered unavailable (the importer builds no SupportedSpec witness; compiled code is only tested by A/B/C)
+function tickToPrice
+  importable true
+  denoteCovered true
+  compilable true
+  compilerProofCovered unavailable (the importer builds no SupportedSpec witness; compiled code is only tested by A/B/C)

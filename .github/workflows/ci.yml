@@ -20,4 +20,6 @@ jobs:
         if: always()
         with:
           name: midnight-validation
-          path: out/
+          path: |
+            out/
+            ticklib/out/
