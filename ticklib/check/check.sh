@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build the TickLib proofs, replay the import, and audit the axioms.
+# Build the TickLib proofs, replay the import, run the differential tests and audit the axioms.
 set -eu
 cd "$(dirname "$0")/.."
 # Resolves the dependencies pinned in lake-manifest.json, then fetches Mathlib's
@@ -8,6 +8,12 @@ lake exe cache get
 python3 .lake/packages/verity/scripts/setup_solc_import.py --output .lake/solidity-import/solc-0.8.34
 lake build
 python3 check/check_import.py
+# A/B/C differential tests, as in the root check: run the imported model and the
+# solc-compiled bytecode on the same inputs and compare results and reverts.
+for f in wexp ticktoprice; do
+  sh .lake/packages/verity/scripts/check_solidity_differential.sh \
+    --config check/differential-$f.json --output out/differential-$f --cases 256 --seed 2438
+done
 mkdir -p out
 lake env lean check/AxiomAudit.lean > out/axioms.txt
 python3 - <<'PY'

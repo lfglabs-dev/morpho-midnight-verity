@@ -1,9 +1,9 @@
 import TickLib.Import
-import TickLib.Signed
+import TickLib.Proof.Signed
 import Compiler.SolidityImport.Proofs
 
 /-!
-# What the imported code computes
+# Step A: what the imported code computes
 
 `run_wExp` and `run_tickToPrice` show that running the imported bodies of
 `wExp` and `tickToPrice` returns `wExpW x` and `tickW tick`: plain functions
@@ -28,11 +28,10 @@ The importer inlines the recursive call `wExp(-x)` with a guard that reverts if
 -/
 
 open Compiler.CompilationModel Compiler.CompilationModel.Denote Compiler.CompilationModel.SolidityImport
-open Verity.Core TickLib.Signed
-namespace TickLib.Execution
+open Verity.Core TickLib.Proof.Signed
+namespace TickLib.Proof.Execution
 
 set_option maxRecDepth 100000
-set_option linter.unusedSimpArgs false
 
 /-! ## Expression evaluation, one constructor at a time -/
 
@@ -79,7 +78,7 @@ def result : StmtOutcome → Option (List Nat)
   | .stop state | .continue state | .return _ state => state.observedReturnWords
   | .revert | .revertWithData _ => none
 
-theorem one_bne' : ((1 : Nat) != 0) = true := rfl
+theorem one_bne : ((1 : Nat) != 0) = true := rfl
 
 section
 variable (o : DenoteOracle) (fs : List Field) (s : DenoteState) (rest : List Stmt)
@@ -116,7 +115,7 @@ theorem st_ret (args : List Expr) : execStmtList o fs s (.returnValues args :: r
   simp only [execStmtList, execStmt]; cases evalExprList o fs s args <;> rfl
 theorem st_require_ok (c : Expr) (name : String) (args : List Expr) (h : evalExpr o fs s c = some 1) :
     execStmtList o fs s (.requireError c name args :: rest) = execStmtList o fs s rest := by
-  simp only [execStmtList, execStmt, h, one_bne', ↓reduceIte]
+  simp only [execStmtList, execStmt, h, one_bne, ↓reduceIte]
 theorem st_require_fail (c : Expr) (name : String) (h : evalExpr o fs s c = some 0) :
     result (execStmtList o fs s (.requireError c name [] :: rest)) = none := by
   simp only [execStmtList, execStmt, h, evalExprList]
@@ -126,7 +125,6 @@ theorem evl_one (e : Expr) : evalExprList o fs s [e] = (evalExpr o fs s e).map f
 end
 
 theorem wn (n : Nat) : wordNormalize n = n % 2 ^ 256 := rfl
-theorem one_bne : ((1 : Nat) != 0) = true := rfl
 theorem zero_bne : ((0 : Nat) != 0) = false := rfl
 theorem bw_ne (b : Bool) : ((if b = true then 1 else 0 : Nat) != 0) = b := by cases b <;> rfl
 theorem bw_dec_ne (p : Prop) [Decidable p] : ((if decide p = true then 1 else 0 : Nat) != 0) = decide p :=
@@ -544,4 +542,4 @@ theorem run_tickToPrice (o : DenoteOracle) (w : Verity.ContractState) (n : Nat) 
   · rw [tickToPrice_out o w n hn]
     unfold tickW; rw [if_neg hn]; rfl
 
-end TickLib.Execution
+end TickLib.Proof.Execution

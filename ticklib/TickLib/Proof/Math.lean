@@ -1,10 +1,11 @@
 import Mathlib.Tactic
 
 /-!
-# The mathematics of `wExp` and `tickToPrice`
+# Step C: why `wExp` and `tickToPrice` are monotone
 
 Integer versions of what `TickLib.sol` computes, and why they are monotone.
-`Execution.lean` shows that the imported code computes exactly these values.
+`Execution.lean` and `Bridge.lean` show that the imported code computes exactly
+these values on the ranges the rules use.
 
 For `x ≥ 0`, `wExp(x) = expR(r) << q` with
 
@@ -30,7 +31,7 @@ For `x ≥ 0`, `wExp(x) = expR(r) << q` with
    of `1e11` is non-decreasing.
 -/
 
-namespace TickLib.Math
+namespace TickLib.Proof.Math
 
 /-! ## Definitions -/
 
@@ -103,7 +104,7 @@ theorem expR_step (r : Int) (hr : -1000000000000000000 ≤ r) : expR r ≤ expR 
 
 /-- `expR` is non-decreasing on `[-1e18, ∞)`, which contains every remainder `r`. -/
 theorem expR_mono {r r' : Int} (hr : -1000000000000000000 ≤ r) (h : r ≤ r') : expR r ≤ expR r' := by
-  induction r', h using Int.le_induction with
+  induction r', h using Int.leInduction with
   | base => exact le_refl _
   | succ n hn ih => exact le_trans ih (expR_step n (le_trans hr hn))
 
@@ -226,4 +227,4 @@ theorem priceOf_anti {W W' : Nat} (h : W ≤ W') : priceOf W' ≤ priceOf W := b
 theorem priceOf_le_wad (W : Nat) : priceOf W ≤ 1000000000000000000 :=
   le_trans (priceOf_anti (Nat.zero_le W)) (by decide)
 
-end TickLib.Math
+end TickLib.Proof.Math

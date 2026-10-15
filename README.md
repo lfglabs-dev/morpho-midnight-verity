@@ -17,41 +17,25 @@ git submodule update --init --recursive
 
 ## TickLib monotonicity
 
-[ticklib/](ticklib/README.md) proves Midnight's `TickLib.wExp` and
-`TickLib.tickToPrice` monotone. They are imported unmodified through Morpho's
-Certora harness `certora/helpers/TickLibWrapper.sol`.
-[Spec.lean](ticklib/TickLib/Spec.lean) states the rules and
+[ticklib/](ticklib/README.md) proves `TickLib.wExp` and `TickLib.tickToPrice` monotone,
+on the unmodified `TickLib.sol` imported through Morpho's Certora harness
+`certora/helpers/TickLibWrapper.sol`. [Spec.lean](ticklib/TickLib/Spec.lean) states
+the rules of `TickToPrice.spec` and `TickToPriceIsMonotonic.spec`, and
 [Proof.lean](ticklib/TickLib/Proof.lean) proves them:
 
-- `tickToPriceIsMonotonic`: for all `uint256` ticks `t1 < t2`, if both calls
-  succeed then `tickToPrice(t1) <= tickToPrice(t2)`.
-- `wExpIsMonotonic`: for `-X* <= x <= y <= X*`, `X* = 135999161806159974428`, both
-  calls succeed and `wExp(x) <= wExp(y)`.
-- `wExpNotMonotonicBeyond`: `wExp(X*) > wExp(X* + 1) = 0`, so the range is exact.
-- Ports of the other `TickToPrice.spec` rules: `maxOutputIsWExpOfMaxInput`,
-  `tickToPriceIsZeroAtZero`, `tickToPriceIsOneAtMaxTick`,
-  `tickToPriceUsesPriceRoundingStep`, `tickToPriceAtMostWad`, plus
-  `tickToPriceTotal`: every `tick <= 6744` succeeds.
+- `tickToPriceIsMonotonic`: for all `uint256` ticks `t1 < t2`, if both calls succeed,
+  `tickToPrice(t1) <= tickToPrice(t2)`.
+- `wExpIsMonotonic`: for `-X* <= x <= y <= X*`, `X* = 135999161806159974428`, both calls
+  succeed and `wExp(x) <= wExp(y)`. `wExpNotMonotonicBeyond` shows `X*` is the exact limit.
+- the other `TickToPrice.spec` rules, plus `tickToPriceTotal` (every `tick <= 6744` succeeds).
 
-Certora's approach is different. `TickToPrice.spec` checks `wExp` with five
-step rules on `[-maxInput, maxInput]`. `TickToPriceIsMonotonic.spec` then
-replaces `wExp` by a ghost with the axiom
-`forall x y. x <= y => wExp(x) <= wExp(y)` over all `int256`. That axiom is
-false for the real code: past `X*` the shift `expR << q` overflows and `wExp`
-drops from about `2^256` to `0`. Here a single chain of checked proofs goes from
-the model imported from the Solidity to the monotonicity statement. It has no
-axiom and no summary, and it states the exact maximal range of `wExp`. The
-axiom audit shows only `propext`, `Classical.choice` and `Quot.sound`.
+`TickToPriceIsMonotonic.spec` summarizes `wExp` with a ghost axiom that it is monotone on
+all `int256`. That holds on every input `tickToPrice` can produce, but not beyond `X*`, where
+the shift overflows and `wExp` drops to `0`. Here `tickToPriceIsMonotonic` is proved about
+the imported `wExp` itself, with no axiom or summary.
 
-`ticklib/` is a separate Lake package pinned to Verity `10f697bb`, which can
-import `int256` and `wExp`'s recursive call. The root package stays on
-`9b472a8`, so the `updatePositionView` proof is unchanged. `./check/check.sh`
-runs both. To re-run only TickLib:
-
-```sh
-git submodule update --init --recursive
-sh ticklib/check/check.sh
-```
+`./check/check.sh` runs the TickLib checks after the root ones. To run only TickLib:
+`sh ticklib/check/check.sh`.
 
 ## Cursor Cloud environment
 

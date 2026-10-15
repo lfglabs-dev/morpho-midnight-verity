@@ -1,0 +1,16 @@
+{
+  "project": "../../vendor/midnight",
+  "entry": "certora/helpers/TickLibWrapper.sol",
+  "contract": "TickLibWrapper",
+  "function": "tickToPrice",
+  "param_types": [
+    "uint256"
+  ],
+  "variables": {
+    "tick": 13
+  },
+  "arguments": {
+    "tick": "tick"
+  },
+  "corpus": "tick-cases.json"
+}

@@ -15,8 +15,9 @@ Morpho's harness `certora/helpers/TickLibWrapper.sol`, which calls the unmodifie
 
 - **No ghost axiom.** `TickToPriceIsMonotonic.spec` summarizes `wExp` by a ghost
   with `axiom forall x y. x <= y => summaryWExp(x) <= summaryWExp(y)` over all
-  `int256`. That axiom is false for the real `wExp`: see `wExpNotMonotonicBeyond`.
-  Here `tickToPriceIsMonotonic` is about the imported code, `wExp` included.
+  `int256`. That holds on every input `tickToPrice` produces, but not past `X*`
+  (`wExpNotMonotonicBeyond`). Here `tickToPriceIsMonotonic` is about the imported
+  code, `wExp` included.
 - **One monotonicity rule for `wExp`**, over its exact maximal range
   `[-X*, X*]`, instead of the five step rules `wExpIsMonotonicOn*`,
   `expRIsMonotonicWithinSegment` and `qIncreasesByZeroOrOne` on `[-maxInput, maxInput]`.
@@ -47,7 +48,7 @@ def wExpIsMonotonic : Prop :=
     ∃ wx wy, tickLib.wExp oracle world x = some wx ∧ tickLib.wExp oracle world y = some wy ∧ wx ≤ wy
 
 /-- `wExp(X*) > wExp(X* + 1)`, both calls succeeding: `wExp` is not monotone on all
-of `int256`, so the ghost axiom of `TickToPriceIsMonotonic.spec` does not hold. -/
+of `int256`, so the ghost axiom of `TickToPriceIsMonotonic.spec` only holds on a range. -/
 def wExpNotMonotonicBeyond : Prop :=
   ∀ (oracle : DenoteOracle) (world : Verity.ContractState),
     ∃ a b, tickLib.wExp oracle world (Int256.ofInt XSTAR) = some a ∧

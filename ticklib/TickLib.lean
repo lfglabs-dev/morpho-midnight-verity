@@ -1,6 +1,7 @@
 import TickLib.Import
 import TickLib.Spec
-import TickLib.Signed
-import TickLib.Execution
-import TickLib.Math
+import TickLib.Proof.Signed
+import TickLib.Proof.Execution
+import TickLib.Proof.Math
+import TickLib.Proof.Bridge
 import TickLib.Proof

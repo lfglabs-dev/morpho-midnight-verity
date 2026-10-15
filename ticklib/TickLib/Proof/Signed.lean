@@ -2,7 +2,7 @@ import Verity.Proofs.Stdlib.Int256
 import Mathlib.Tactic
 
 /-!
-# Signed words
+# Signed words (helpers for steps A and B)
 
 The imported code computes on 256-bit words (`Nat`s below `2^256`). An `int256`
 value `z` is stored as the word `enc z = z mod 2^256`. This file turns each
@@ -23,7 +23,7 @@ as long as the operands and the result are representable:
 
 open Verity.Core
 
-namespace TickLib.Signed
+namespace TickLib.Proof.Signed
 
 /-! ## The word operations of the imported model's `evalExpr` -/
 
@@ -216,4 +216,4 @@ theorem divW_lt (a b : Nat) : divW a b < 2 ^ 256 := (Uint256.ofNat a / Uint256.o
 
 theorem mulW_lt (a b : Nat) : mulW a b < 2 ^ 256 := (Uint256.ofNat a * Uint256.ofNat b).isLt
 
-end TickLib.Signed
+end TickLib.Proof.Signed
