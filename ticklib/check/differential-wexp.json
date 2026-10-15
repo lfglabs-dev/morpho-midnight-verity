@@ -1,0 +1,16 @@
+{
+  "project": "../../vendor/midnight",
+  "entry": "certora/helpers/TickLibWrapper.sol",
+  "contract": "TickLibWrapper",
+  "function": "wExp",
+  "param_types": [
+    "int256"
+  ],
+  "variables": {
+    "x": 67
+  },
+  "arguments": {
+    "x": "x"
+  },
+  "corpus": "wexp-cases.json"
+}

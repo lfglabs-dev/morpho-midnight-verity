@@ -1,0 +1,42 @@
+[
+ {
+  "name": "tick 0",
+  "tick": "0"
+ },
+ {
+  "name": "tick 1",
+  "tick": "1"
+ },
+ {
+  "name": "tick 2",
+  "tick": "2"
+ },
+ {
+  "name": "tick 3371",
+  "tick": "3371"
+ },
+ {
+  "name": "tick 3372",
+  "tick": "3372"
+ },
+ {
+  "name": "tick 3373",
+  "tick": "3373"
+ },
+ {
+  "name": "tick 6743",
+  "tick": "6743"
+ },
+ {
+  "name": "tick 6744",
+  "tick": "6744"
+ },
+ {
+  "name": "tick 6745 (reverts)",
+  "tick": "6745"
+ },
+ {
+  "name": "tick 8191 (reverts)",
+  "tick": "8191"
+ }
+]

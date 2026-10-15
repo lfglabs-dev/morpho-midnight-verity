@@ -26,3 +26,5 @@ for name, axioms in re.findall(r"'([^']+)' depends on axioms: \[([^]]*)\]", text
 assert seen == expected, ("missing/unexpected axiom audit", seen, expected)
 print(text, end="")
 PY
+# TickLib monotonicity: a separate Lake package on a newer Verity (see ticklib/).
+sh ticklib/check/check.sh

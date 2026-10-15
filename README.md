@@ -15,6 +15,28 @@ git submodule update --init --recursive
 ./check/check.sh
 ```
 
+## TickLib monotonicity
+
+[ticklib/](ticklib/README.md) proves `TickLib.wExp` and `TickLib.tickToPrice` monotone,
+on the unmodified `TickLib.sol` imported through Morpho's Certora harness
+`certora/helpers/TickLibWrapper.sol`. [Spec.lean](ticklib/TickLib/Spec.lean) states
+the rules of `TickToPrice.spec` and `TickToPriceIsMonotonic.spec`, and
+[Proof.lean](ticklib/TickLib/Proof.lean) proves them:
+
+- `tickToPriceIsMonotonic`: for all `uint256` ticks `t1 < t2`, if both calls succeed,
+  `tickToPrice(t1) <= tickToPrice(t2)`.
+- `wExpIsMonotonic`: for `-X* <= x <= y <= X*`, `X* = 135999161806159974428`, both calls
+  succeed and `wExp(x) <= wExp(y)`. `wExpNotMonotonicBeyond` shows `X*` is the exact limit.
+- the other `TickToPrice.spec` rules, plus `tickToPriceTotal` (every `tick <= 6744` succeeds).
+
+`TickToPriceIsMonotonic.spec` summarizes `wExp` with a ghost axiom that it is monotone on
+all `int256`. That holds on every input `tickToPrice` can produce, but not beyond `X*`, where
+the shift overflows and `wExp` drops to `0`. Here `tickToPriceIsMonotonic` is proved about
+the imported `wExp` itself, with no axiom or summary.
+
+`./check/check.sh` runs the TickLib checks after the root ones. To run only TickLib:
+`sh ticklib/check/check.sh`.
+
 ## Cursor Cloud environment
 
 `.cursor/environment.json` uses `.cursor/Dockerfile` to install Lean 4.31.0.

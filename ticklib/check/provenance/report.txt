@@ -1,0 +1,20 @@
+importer solidity-import-1
+solc 0.8.34+commit.80d5c536
+solcSha256 d40adc6f9fdbb22a97d32a02fa05688bf2ee7886affc48c9851b0afd4a726b39
+digest 825a7ddd11dc3f41ea71a26bf66d96332a321c039931a8f7442b97916ab8c332
+contract TickLibWrapper
+root wExp
+root tickToPrice
+settings {"evmVersion":"osaka","metadata":{"bytecodeHash":"none"},"optimizer":{"enabled":true,"runs":466},"outputSelection":{"*":{"":["ast"],"*":["storageLayout"]}},"remappings":[],"viaIR":true}
+status wExp importable denoteCovered true compilerProof unavailable (the importer builds no SupportedSpec witness; compiled code is only tested by A/B/C)
+status tickToPrice importable denoteCovered true compilerProof unavailable (the importer builds no SupportedSpec witness; compiled code is only tested by A/B/C)
+include TickLibWrapper.wExp decl 43 params [int256]
+include TickLib.wExp decl 204 params [int256]
+include TickLibWrapper.tickToPrice decl 56 params [uint256]
+include TickLib.tickToPrice decl 251 params [uint256]
+include TickLib.divHalfDownUnchecked decl 115 params [uint256, uint256]
+exclude TickLibWrapper.lnOnePlusDelta decl 14 params []
+exclude TickLibWrapper.maxTick decl 22 params []
+exclude TickLibWrapper.priceRoundingStep decl 30 params []
+exclude TickLibWrapper.priceToTick decl 72 params [uint256, uint256]
+exclude TickLib.priceToTick decl 320 params [uint256, uint256]

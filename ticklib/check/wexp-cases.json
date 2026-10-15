@@ -1,0 +1,66 @@
+[
+ {
+  "name": "zero",
+  "x": "0"
+ },
+ {
+  "name": "one",
+  "x": "1"
+ },
+ {
+  "name": "minus-one",
+  "x": "-1"
+ },
+ {
+  "name": "maxInput",
+  "x": "16817989975223754156"
+ },
+ {
+  "name": "minus-maxInput",
+  "x": "-16817989975223754156"
+ },
+ {
+  "name": "xstar",
+  "x": "135999161806159974428"
+ },
+ {
+  "name": "xstar-plus-1 (shift overflows to 0)",
+  "x": "135999161806159974429"
+ },
+ {
+  "name": "minus-xstar",
+  "x": "-135999161806159974428"
+ },
+ {
+  "name": "minus-xstar-minus-1 (1e36 / 0 panics)",
+  "x": "-135999161806159974429"
+ },
+ {
+  "name": "end of segment 0",
+  "x": "370535965570485438"
+ },
+ {
+  "name": "start of segment 1",
+  "x": "370535965570485439"
+ },
+ {
+  "name": "end of segment 23",
+  "x": "16312921118449227545"
+ },
+ {
+  "name": "start of segment 24",
+  "x": "16312921118449227546"
+ },
+ {
+  "name": "minus start of segment 1",
+  "x": "-370535965570485439"
+ },
+ {
+  "name": "2^70 (far past X*, shift overflows)",
+  "x": "1180591620717411303424"
+ },
+ {
+  "name": "-2^70",
+  "x": "-1180591620717411303424"
+ }
+]
